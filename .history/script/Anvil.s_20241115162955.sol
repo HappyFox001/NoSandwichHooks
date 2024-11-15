@@ -30,7 +30,7 @@ import {IWETH9} from "v4-periphery/src/interfaces/external/IWETH9.sol";
 contract CounterScript is Script, DeployPermit2 {
     using EasyPosm for IPositionManager;
 
-    address constant CREATE2_DEPLOYER = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
+    address constant CREATE2_DEPLOYER = address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
 
     function setUp() public {}
 

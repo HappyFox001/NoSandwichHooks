@@ -85,9 +85,7 @@ contract CounterScript is Script, DeployPermit2 {
 
     function deployPosm(IPoolManager poolManager) public returns (IPositionManager) {
         anvilPermit2();
-        return IPositionManager(
-            new PositionManager(poolManager, permit2, 300_000, IPositionDescriptor(address(0)), IWETH9(address(0)))
-        );
+        return IPositionManager(new PositionManager(poolManager, permit2, 300_000, IPositionDescriptor(address(0)), IWETH9(address(0))));
     }
 
     function approvePosmCurrency(IPositionManager posm, Currency currency) internal {
@@ -172,3 +170,7 @@ contract CounterScript is Script, DeployPermit2 {
         swapRouter.swap(poolKey, params, testSettings, ZERO_BYTES);
     }
 }
+forge script script/Anvil.s.sol \
+    --rpc-url http://localhost:8545 \
+    --private-key <test_wallet_private_key> \
+    --broadcast
