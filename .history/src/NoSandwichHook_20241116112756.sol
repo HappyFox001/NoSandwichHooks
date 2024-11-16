@@ -26,7 +26,6 @@ contract NoSandwichHooks is BaseHook {
         lastSettlementTimestamp = block.timestamp;
         quoteCurrencyReserve = 0;
         baseCurrencyReserve = 0;
-        emit ContractDeployed(block.timestamp);
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
@@ -67,8 +66,6 @@ contract NoSandwichHooks is BaseHook {
             }
         }
 
-        emit BeforeSwap(sender, params.amountSpecified, params.zeroForOne);
-
         if (block.timestamp - lastSettlementTimestamp >= settlementInterval) {
             _settleAndDistribute(key.currency0, key.currency1);
         }
@@ -77,6 +74,7 @@ contract NoSandwichHooks is BaseHook {
     }
 
     function _settleAndDistribute(Currency baseCurrency, Currency quoteCurrency) internal {
+        // 1. 计算总贡献
         uint256 totalBaseContribution = 0;
         uint256 totalQuoteContribution = 0;
 
@@ -87,27 +85,30 @@ contract NoSandwichHooks is BaseHook {
             totalQuoteContribution += quoteContributions[quoteCurrencyContributors[i]];
         }
 
-        uint256 k = baseCurrencyReserve * quoteCurrencyReserve;
+        uint256 k = baseCurrencyReserve * quoteCurrencyReserve; // 恒定乘积
         uint256 x2m = sqrt(k + 2 * sqrt(k) * (totalBaseContribution - totalQuoteContribution));
         uint256 y2m = k / x2m;
 
+        //
         uint256 baseOut = baseCurrencyReserve + totalBaseContribution - x2m;
         uint256 quoteOut = quoteCurrencyReserve + totalQuoteContribution - y2m;
 
         baseCurrencyReserve = x2m;
+
         quoteCurrencyReserve = y2m;
 
         for (uint256 i = 0; i < baseCurrencyContributors.length; i++) {
             address contributor = baseCurrencyContributors[i];
             uint256 contribution = baseContributions[contributor];
-            uint256 payout = (quoteOut * contribution) / totalBaseContribution;
+            uint256 payout = (quoteOut * contribution) / totalBaseContribution; // 按比例计算分发量
             CurrencyLibrary.transfer(quoteCurrency, contributor, payout);
         }
 
         for (uint256 i = 0; i < quoteCurrencyContributors.length; i++) {
             address contributor = quoteCurrencyContributors[i];
             uint256 contribution = quoteContributions[contributor];
-            uint256 payout = (baseOut * contribution) / totalQuoteContribution;
+            uint256 payout = (baseOut * contribution) / totalQuoteContribution; // 按比例计算分发量
+
             CurrencyLibrary.transfer(baseCurrency, contributor, payout);
         }
 
@@ -146,9 +147,6 @@ contract NoSandwichHooks is BaseHook {
         } else if (deltaQuote < 0) {
             quoteCurrencyReserve -= uint256(-deltaQuote);
         }
-
-        emit AfterAddLiquidity(deltaBase, deltaQuote);
-
         return (BaseHook.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
@@ -160,6 +158,7 @@ contract NoSandwichHooks is BaseHook {
         BalanceDelta feeDelta,
         bytes calldata
     ) external override returns (bytes4, BalanceDelta) {
+        // Update reserves based on the removed liquidity
         int256 deltaBase = principalDelta.amount0() + feeDelta.amount0();
         int256 deltaQuote = principalDelta.amount1() + feeDelta.amount1();
 
@@ -171,16 +170,16 @@ contract NoSandwichHooks is BaseHook {
             quoteCurrencyReserve -= uint256(-deltaQuote);
         }
 
-        emit AfterRemoveLiquidity(deltaBase, deltaQuote);
+        // emit ReserveUpdated(
+        //     baseCurrencyReserve,
+        //     quoteCurrencyReserve,
+        //     block.timestamp
+        // );
 
         return (BaseHook.afterRemoveLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
-    event ContractDeployed(uint256 timestamp);
-    event BeforeSwap(address sender, int256 amountSpecified, bool zeroForOne);
     event SettlementPerformed(uint256 baseOut, uint256 quoteOut, uint256 timestamp);
-    event AfterAddLiquidity(int256 deltaBase, int256 deltaQuote);
-    event AfterRemoveLiquidity(int256 deltaBase, int256 deltaQuote);
 
     function sqrt(uint256 x) internal pure returns (uint256) {
         if (x == 0) return 0;

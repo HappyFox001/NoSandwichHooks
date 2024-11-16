@@ -118,7 +118,7 @@ contract NoSandwichHooks is BaseHook {
             quoteContributions[quoteCurrencyContributors[i]] = 0;
         }
         baseCurrencyContributors = new address[](0);
-        quoteCurrencyContributors = new address[](0);
+        quoteCurrencyContributors = new address;
         lastSettlementTimestamp = block.timestamp;
 
         emit SettlementPerformed(baseOut, quoteOut, block.timestamp);
